@@ -1,31 +1,58 @@
-export interface User{
-    name: string,
-    email: string
-}
+import { Subject } from "typeorm/persistence/Subject";
+import { AppDataSource } from "../database";
+import { User } from "../entities/User";
+import { UserRespository } from "../repositores/User.Respository"
+import { sign } from "jsonwebtoken";
 
-const db = [{ 
-    name: "Joana", 
-    email: "joana@teste.com" 
-}];
 
 export class UserService{
-    db:User []
-
-    constructor( database = db){
-        this.db = database
+    private userRepository: UserRespository;
+    constructor(
+        userRepository = new UserRespository(AppDataSource.manager)
+    ){
+        this.userRepository = userRepository;
     }
 
-    createUser = (name:string, email:string) => {
+    createUser = async (name:string, email:string, password:string): Promise<User> => {
+        const user = new User(name, email, password)
+        return this.userRepository.createUser(user)
+    }
 
-        const user = {
-            name, 
-            email
+   
+
+    getUser = async(userId:string): Promise <User | null> =>{
+        return this.userRepository.geteUser(userId)
+    }
+
+    getAuthenticatedUser = async (email:string, password:string): Promise <User | null> => {
+        return this.userRepository.getUserByEmailAndPassworl(email, password)
+    }
+
+    getToken = async (email:string, password:string): Promise<string> =>{
+        const user = await this.getAuthenticatedUser(email, password)
+        if(!user){
+            throw new Error('Email ou senha inválidos!')
         }
-        this.db.push(user)
-        console.log(this.db)
+
+        const tokenData = {
+            name:user?.name,
+            email:user?.email
+        }
+
+        const tokenKey = '123456789'
+
+        const tokenOptions = {
+            subject: user?.user_id
+        }
+
+        const token = sign(tokenData, tokenKey,tokenOptions )
+
+        return token
     }
 
-    getAllUsers = () =>{
-        return this.db
-    }
+
+   /*  deleteUsers = (id:number) => {
+        this.db.pop()
+        console.log(this.db)
+    } */
 }
